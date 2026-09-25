@@ -1,10 +1,15 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.upload import router as upload_router
+
 
 app = FastAPI(
     title="SIH26155 Network Security Compliance Engine",
-    description="AI-assisted, vendor-agnostic network security configuration auditor",
+    description=(
+        "AI-assisted, vendor-agnostic network security "
+        "configuration auditor"
+    ),
     version="0.1.0",
 )
 
@@ -19,6 +24,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+app.include_router(upload_router)
 
 
 @app.get("/health")
