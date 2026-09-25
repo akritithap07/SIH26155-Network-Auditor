@@ -68,7 +68,6 @@ Thumbs.db
 backend/data/uploads/
 backend/data/reports/
 uploads/
-reports/
 
 # ==============================
 # Logs
