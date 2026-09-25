@@ -1,0 +1,77 @@
+# ==============================
+# Python
+# ==============================
+
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environments
+venv/
+.venv/
+backend/venv/
+
+# Python tooling
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ==============================
+# Environment / Secrets
+# ==============================
+
+.env
+.env.*
+!.env.example
+
+# ==============================
+# Databases
+# ==============================
+
+*.db
+*.sqlite
+*.sqlite3
+
+# ==============================
+# Node / React
+# ==============================
+
+frontend/node_modules/
+frontend/dist/
+
+# ==============================
+# Testing / Coverage
+# ==============================
+
+coverage/
+*.coverage
+
+# ==============================
+# VS Code
+# ==============================
+
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# ==============================
+# OS
+# ==============================
+
+.DS_Store
+Thumbs.db
+
+# ==============================
+# Generated files
+# ==============================
+
+backend/data/uploads/
+backend/data/reports/
+uploads/
+reports/
+
+# ==============================
+# Logs
+# ==============================
+
+*.log
