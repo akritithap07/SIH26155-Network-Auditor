@@ -1,9 +1,10 @@
 :root {
   font-family:
-    Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
 
   color: #111827;
-  background: #f3f4f6;
+  background: #f4f6f8;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -21,100 +22,317 @@ body {
 }
 
 button,
-input,
-textarea,
-select {
+input {
   font: inherit;
 }
 
-.app {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
+button {
+  cursor: pointer;
 }
 
-.card {
-  width: min(720px, 100%);
-  padding: 40px;
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.app-shell {
+  min-height: 100vh;
+  padding: 48px 20px;
+}
+
+.hero {
+  width: min(900px, 100%);
+  margin: 0 auto;
+}
+
+.eyebrow {
+  display: inline-block;
+  margin-bottom: 12px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #111827;
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+h1,
+h2,
+p {
+  margin-top: 0;
+}
+
+h1 {
+  max-width: 760px;
+  margin-bottom: 16px;
+  font-size: clamp(36px, 6vw, 64px);
+  line-height: 1.02;
+  letter-spacing: -0.04em;
+}
+
+.hero-description {
+  max-width: 680px;
+  margin-bottom: 36px;
+  color: #6b7280;
+  font-size: 18px;
+  line-height: 1.6;
+}
+
+.upload-card,
+.file-card,
+.result-card,
+.message-card {
+  border: 1px solid #e5e7eb;
   border-radius: 20px;
   background: white;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
-  text-align: center;
+  box-shadow: 0 14px 40px rgba(15, 23, 42, 0.06);
 }
 
-.status-icon {
-  width: 64px;
-  height: 64px;
+.upload-card {
+  padding: 48px 32px;
+  text-align: center;
+  border-style: dashed;
+  transition:
+    border-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.upload-card.dragging {
+  border-color: #111827;
+  transform: translateY(-2px);
+}
+
+.upload-icon {
+  width: 56px;
+  height: 56px;
   margin: 0 auto 20px;
-  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
+  border-radius: 16px;
   background: #111827;
   color: white;
   font-size: 28px;
   font-weight: 700;
 }
 
-h1 {
-  margin: 0;
-  font-size: clamp(28px, 5vw, 42px);
-  line-height: 1.15;
+.upload-card h2 {
+  margin-bottom: 10px;
+  font-size: 28px;
 }
 
-.subtitle {
-  margin: 16px auto 0;
-  max-width: 560px;
+.upload-card p {
+  max-width: 520px;
+  margin: 0 auto 24px;
   color: #6b7280;
   line-height: 1.6;
 }
 
-.environment {
-  margin-top: 32px;
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
-}
-
-.environment > div {
-  padding: 20px;
-  border: 1px solid #e5e7eb;
-  border-radius: 14px;
-  text-align: left;
-}
-
-.environment span {
-  display: block;
-  margin-bottom: 8px;
-  color: #6b7280;
+.drop-hint {
+  margin-top: 14px;
+  color: #9ca3af;
   font-size: 14px;
 }
 
-.environment strong {
-  display: block;
-  font-size: 16px;
+.primary-button,
+.secondary-button {
+  border: none;
+  border-radius: 12px;
+  padding: 12px 18px;
+  font-weight: 700;
+  transition:
+    transform 0.15s ease,
+    opacity 0.15s ease;
 }
 
-.status {
+.primary-button {
+  background: #111827;
+  color: white;
+}
+
+.secondary-button {
+  background: #e5e7eb;
+  color: #111827;
+}
+
+.primary-button:hover,
+.secondary-button:hover {
+  transform: translateY(-1px);
+}
+
+.file-card,
+.result-card,
+.message-card {
+  margin-top: 20px;
+  padding: 24px;
+}
+
+.file-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.label {
+  display: block;
+  margin-bottom: 6px;
+  color: #6b7280;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.file-card strong {
+  display: block;
+  font-size: 17px;
   word-break: break-word;
 }
 
-.healthy {
-  color: #15803d;
+.file-meta {
+  display: block;
+  margin-top: 5px;
+  color: #9ca3af;
+  font-size: 13px;
 }
 
-.unhealthy {
-  color: #dc2626;
+.result-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
 }
 
-@media (max-width: 640px) {
-  .card {
-    padding: 28px 20px;
+.result-header h2 {
+  margin-bottom: 0;
+  font-size: 32px;
+}
+
+.status-badge {
+  padding: 7px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.status-badge.success {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.status-badge.warning {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.result-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.result-item {
+  padding: 16px;
+  border-radius: 14px;
+  background: #f9fafb;
+}
+
+.result-item span {
+  display: block;
+  margin-bottom: 6px;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.result-item strong {
+  font-size: 20px;
+  text-transform: capitalize;
+}
+
+.signals-section,
+.scores-section {
+  margin-top: 28px;
+}
+
+.signals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.signal {
+  padding: 7px 10px;
+  border-radius: 8px;
+  background: #f3f4f6;
+  color: #374151;
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 13px;
+}
+
+.muted {
+  margin-bottom: 0;
+  color: #9ca3af;
+}
+
+.score-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid #f0f1f3;
+}
+
+.score-row:last-child {
+  border-bottom: none;
+}
+
+.score-row strong {
+  font-size: 18px;
+}
+
+.full-width {
+  width: 100%;
+  margin-top: 28px;
+}
+
+.error-card {
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+
+.error-card strong {
+  color: #991b1b;
+}
+
+.error-card p {
+  margin: 6px 0 0;
+  color: #b91c1c;
+}
+
+@media (max-width: 700px) {
+  .app-shell {
+    padding: 28px 16px;
   }
 
-  .environment {
+  .upload-card {
+    padding: 36px 20px;
+  }
+
+  .file-card,
+  .result-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .result-grid {
     grid-template-columns: 1fr;
+  }
+
+  .secondary-button {
+    width: 100%;
   }
 }
