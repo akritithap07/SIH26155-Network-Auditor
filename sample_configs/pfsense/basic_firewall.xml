@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<pfsense>
+    <version>2.7.2</version>
+
+    <system>
+        <hostname>EDGE-FIREWALL</hostname>
+        <domain>example.local</domain>
+    </system>
+
+    <interfaces>
+        <wan>
+            <enable>yes</enable>
+            <ipaddr>203.0.113.2</ipaddr>
+            <subnet>24</subnet>
+        </wan>
+
+        <lan>
+            <enable>yes</enable>
+            <ipaddr>10.0.0.1</ipaddr>
+            <subnet>24</subnet>
+        </lan>
+    </interfaces>
+
+    <filter>
+        <rule>
+            <type>pass</type>
+            <interface>lan</interface>
+            <protocol>tcp</protocol>
+        </rule>
+    </filter>
+</pfsense>

@@ -1,0 +1,135 @@
+[
+  {
+    "vendor": "cisco_ios",
+    "example": "ip ssh version 2",
+    "control_id": "CIS-NET-03",
+    "target_key": "security.ssh_version",
+    "description": "Explicitly configures SSH protocol version 2."
+  },
+  {
+    "vendor": "cisco_ios",
+    "example": "ip ssh enabled for remote administration",
+    "control_id": "CIS-NET-02",
+    "target_key": "security.ssh_enabled",
+    "description": "Indicates SSH is enabled for management access."
+  },
+  {
+    "vendor": "cisco_ios",
+    "example": "transport input telnet",
+    "control_id": "CIS-NET-04",
+    "target_key": "security.telnet_enabled",
+    "description": "Permits Telnet on a remote management line."
+  },
+  {
+    "vendor": "cisco_ios",
+    "example": "service password-encryption",
+    "control_id": "CIS-NET-05",
+    "target_key": "security.password_encryption_enabled",
+    "description": "Enables Cisco password encryption."
+  },
+  {
+    "vendor": "cisco_ios",
+    "example": "enable secret configured for privileged EXEC mode",
+    "control_id": "CIS-NET-06",
+    "target_key": "security.enable_secret_configured",
+    "description": "Configures an enable secret for privileged access."
+  },
+  {
+    "vendor": "cisco_ios",
+    "example": "username admin privilege 15 secret",
+    "control_id": "CIS-NET-07",
+    "target_key": "security.all_local_users_use_secret",
+    "description": "Defines a local account using an encrypted secret."
+  },
+  {
+    "vendor": "cisco_ios",
+    "example": "exec-timeout 10 0 on line vty",
+    "control_id": "CIS-NET-08",
+    "target_key": "security.vty_exec_timeout_minutes",
+    "description": "Limits idle VTY management sessions."
+  },
+  {
+    "vendor": "cisco_ios",
+    "example": "access-class 10 in on line vty",
+    "control_id": "CIS-NET-09",
+    "target_key": "security.vty_access_class_configured",
+    "description": "Restricts VTY management access using an access class."
+  },
+  {
+    "vendor": "cisco_ios",
+    "example": "banner motd authorized access only",
+    "control_id": "CIS-NET-10",
+    "target_key": "security.management_banner_configured",
+    "description": "Configures a management warning banner."
+  },
+  {
+    "vendor": "cisco_ios",
+    "example": "snmp-server community public",
+    "control_id": "CIS-NET-11",
+    "target_key": "security.snmp_default_communities",
+    "description": "Configures a known default SNMP community."
+  },
+  {
+    "vendor": "cisco_ios",
+    "example": "no cdp run",
+    "control_id": "CIS-NET-12",
+    "target_key": "security.cdp_enabled",
+    "description": "Disables Cisco Discovery Protocol."
+  },
+  {
+    "vendor": "cisco_ios",
+    "example": "no ip bootp server",
+    "control_id": "CIS-NET-13",
+    "target_key": "security.bootp_enabled",
+    "description": "Disables the Cisco BOOTP server."
+  },
+  {
+    "vendor": "pfsense",
+    "example": "system hostname firewall gateway",
+    "control_id": "CIS-NET-14",
+    "target_key": "metadata.hostname",
+    "description": "Configures the pfSense hostname."
+  },
+  {
+    "vendor": "pfsense",
+    "example": "web administration protocol https",
+    "control_id": "CIS-NET-15",
+    "target_key": "security.web_management_https",
+    "description": "Configures HTTPS for pfSense web administration."
+  },
+  {
+    "vendor": "pfsense",
+    "example": "administrative session timeout 10 minutes",
+    "control_id": "CIS-NET-16",
+    "target_key": "security.session_timeout_minutes",
+    "description": "Limits the idle administrative session duration."
+  },
+  {
+    "vendor": "pfsense",
+    "example": "allow firewall rule with any destination",
+    "control_id": "CIS-NET-17",
+    "target_key": "security.firewall_allow_any_destination",
+    "description": "Represents an allow rule with unrestricted destination scope."
+  },
+  {
+    "vendor": "pfsense",
+    "example": "allow firewall rule with any source",
+    "control_id": "CIS-NET-18",
+    "target_key": "security.firewall_allow_any_source",
+    "description": "Represents an allow rule with unrestricted source scope."
+  },
+  {
+    "vendor": "pfsense",
+    "example": "allow TCP traffic without a destination service or port",
+    "control_id": "CIS-NET-19",
+    "target_key": "security.firewall_allow_any_service",
+    "description": "Represents an allow rule with unrestricted service scope."
+  },
+  {
+    "vendor": "pfsense",
+    "example": "firewall rule logging enabled",
+    "control_id": "CIS-NET-20",
+    "target_key": "security.firewall_logging_all_enabled",
+    "description": "Enables logging for an applicable firewall rule."
+  }
+]

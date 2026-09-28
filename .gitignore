@@ -1,0 +1,49 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual environments
+backend/venv/
+.venv/
+venv/
+
+# Python tooling
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Runtime databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Generated reports
+backend/data/reports/
+*.pdf
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+
+# Local uploads / generated runtime data
+backend/data/uploads/
