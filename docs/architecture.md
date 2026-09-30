@@ -1,166 +1,269 @@
-SIH26155 - Network Security Compliance Auditor
+# SIH26155 - Network Security Compliance Auditor
+## Architecture Document
 
-Architecture Document
+| Item | Value |
+|---|---|
+| Problem Statement | **SIH26155 - Network Security Compliance Auditor** |
+| Theme | **Blockchain & Cybersecurity** |
+| Category | **Software** |
+| Team | **TrailBlazers** |
+| Architecture status | **Current merged MVP** |
 
-1. System objective
+---
 
-The MVP automates security assessment of network-device configuration files while keeping compliance logic vendor-neutral and evidence-driven. A user uploads a single configuration file; the system detects the vendor, parses vendor-specific syntax into a common Pydantic model, extracts security evidence, evaluates applicable CIS-aligned control themes, and returns traceable findings with remediation guidance. Unsupported or incomplete input is not guessed.
+## 1. System Objective
 
-2. High-level architecture
+The Network Security Compliance Auditor converts a raw network-device configuration into an evidence-backed security assessment.
 
-                         +----------------------+
-                         |     React + Vite     |
-                         | upload / audit UI    |
-                         +----------+-----------+
-                                    |
-                              HTTP multipart
-                                    v
-                         +----------------------+
-                         |      FastAPI API      |
-                         | /upload /normalize    |
-                         | /audit                |
-                         +----------+-----------+
-                                    |
-                                    v
-                         +----------------------+
-                         |   Vendor Detection    |
-                         | evidence + scores     |
-                         +----------+-----------+
-                                    |
-                    +---------------+---------------+
-                    |                               |
-                    v                               v
-          +------------------+             +------------------+
-          |   Cisco IOS      |             |     pfSense      |
-          | CLI + Regex      |             | Python XML       |
-          +--------+---------+             +--------+---------+
-                   |                                |
-                   +---------------+----------------+
-                                   v
-                         +----------------------+
-                         |   NormalizedConfig   |
-                         | metadata, interfaces |
-                         | routes, ACL/firewall |
-                         | security evidence    |
-                         | unknown entries      |
-                         +----------+-----------+
-                                    |
-                                    v
-                         +----------------------+
-                         | Deterministic CIS    |
-                         | Compliance Engine     |
-                         +----------+-----------+
-                                    |
-                       +------------+------------+
-                       |            |             |
-                      PASS         FAIL      NOT_ASSESSED
-                       |            |             |
-                       +------------+-------------+
-                                    v
-                         Evidence / Severity /
-                         Remediation / Summary
+The current merged MVP supports **Cisco IOS** and **pfSense**. It detects the vendor, parses vendor-specific syntax into a vendor-neutral `NormalizedConfig`, evaluates applicable CIS-aligned security themes deterministically, preserves evidence, and exposes remediation guidance.
 
-3. Core data flow
+The system deliberately supports three compliance outcomes:
 
-UPLOAD -> DETECT -> PARSE -> NORMALIZE -> ASSESS -> REPORT DATA
+| Result | Meaning |
+|---|---|
+| **PASS** | Available evidence satisfies the expected state. |
+| **FAIL** | Evidence contradicts the control, or the rule defines missing required configuration as a failure. |
+| **NOT_ASSESSED** | Reliable evidence is insufficient, so the system does not invent an answer. |
 
-Ingestion and detection: file size/encoding are validated before processing. The deterministic detector scores known Cisco IOS and pfSense signals. Unknown or ambiguous input is returned without a fabricated vendor assignment.
+---
 
-Parsing and normalization: Cisco CLI syntax is parsed with Python regular expressions; pfSense XML is parsed with Python's XML facilities. Both produce a shared NormalizedConfig containing metadata, interfaces, routes, firewall rules, management/security evidence, parser warnings, and unrecognized entries.
+## 2. High-Level System Architecture
 
-Compliance: the engine evaluates only rules applicable to the detected vendor. A rule returns PASS when evidence satisfies the expected state, FAIL when evidence contradicts it or a required setting is absent where the rule requires it, and NOT_ASSESSED when the export lacks sufficient reliable evidence.
+```mermaid
+flowchart TB
+    U["Configuration File"] --> API["FastAPI API"]
+    API --> D["Deterministic Vendor Detection"]
 
-4. Deterministic compliance model
+    D -->|Cisco IOS| C["Cisco IOS Parser<br/>CLI + Regex"]
+    D -->|pfSense| P["pfSense Parser<br/>XML"]
+    D -->|Unknown / Ambiguous| X["Stop Safely<br/>No Guessing"]
 
-The MVP uses a JSON rule catalog containing 20 internally defined CIS-aligned control themes. Internal identifiers such as CIS-NET-01 through CIS-NET-20 are application rule IDs; they should not be presented as official CIS recommendation numbers without an explicit mapping.
+    C --> N["Vendor-Neutral NormalizedConfig"]
+    P --> N
 
-Each finding carries the rule ID, name, status, severity, CIS-aligned theme, description, expected state, evidence, and vendor-specific remediation guidance. Remediation is advisory only; the MVP does not execute network commands.
+    N --> E["Security Evidence"]
+    E --> CE["Deterministic CIS-aligned<br/>Compliance Engine"]
 
-5. Learning architecture
+    CE --> F["Findings"]
+    F --> S["PASS / FAIL / NOT_ASSESSED"]
+    F --> R["Severity + Evidence + Remediation"]
 
-The AI layer is advisory and deliberately isolated from compliance decisions:
+    E --> UE["Unrecognized Entries"]
+    UE --> AI["Semantic Mapper"]
+    AI --> H["Human Confirmation"]
+    H --> DB[("SQLite Learned Mappings")]
+    DB --> AI
+```
 
-Unrecognized line
-      |
-      v
-Sentence Transformer embedding
-      |
-      v
-Top candidate mappings + similarity score
-      |
-      v
-Human confirmation
-      |
-      v
-SQLite confirmed mapping
-      |
-      v
-Reuse on future matching input
+### Architectural boundary
 
-The current implementation uses all-MiniLM-L6-v2. Similarity scores are ranking signals, not probabilities. Only an explicit human confirmation is persisted. The deterministic compliance engine remains the sole decision layer.
+> **Parsers extract facts. The compliance engine decides status. The AI layer only assists semantic mapping.**
 
-6. Security and failure behavior
+---
 
-Unknown vendors are not guessed.
+## 3. End-to-End Audit Pipeline
 
-Incomplete configuration exports do not receive fabricated evidence.
+```mermaid
+flowchart LR
+    A["1. Upload"] --> B["2. Detect"]
+    B --> C["3. Parse"]
+    C --> D["4. Normalize"]
+    D --> E["5. Evaluate"]
+    E --> F["6. Report"]
 
-NOT_ASSESSED is used when reliable evidence is unavailable.
+    B -->|Unknown| G["Safe Stop"]
+```
 
-Remediation suggestions are not automatically executed.
+| Stage | Responsibility | Output |
+|---|---|---|
+| Upload | Validate single-file input and size/text constraints | Raw configuration |
+| Detect | Score supported vendor signals | Vendor + confidence + signals |
+| Parse | Apply vendor-specific syntax rules | Structured entities |
+| Normalize | Map syntax into common Pydantic model | `NormalizedConfig` |
+| Evaluate | Apply applicable deterministic rules | Findings |
+| Report | Present evidence, severity and remediation | Audit result / report |
 
-Learned mappings require human confirmation.
+---
 
-Vendor parsing stays separate from compliance rules, reducing vendor-specific branching.
+## 4. Normalized Data Model
 
-7. Technology and persistence
+The normalization layer prevents every compliance rule from becoming vendor-specific.
 
-Layer
+```mermaid
+flowchart TB
+    NC["NormalizedConfig"] --> M["Metadata"]
+    NC --> I["Interfaces"]
+    NC --> RT["Routes"]
+    NC --> FW["Firewall / ACL Rules"]
+    NC --> MG["Management / Security Evidence"]
+    NC --> UE["Unrecognized Entries"]
+```
 
-Technology
+Core model entities include:
 
-Frontend
+- `ConfigMetadata`
+- `NetworkInterface`
+- `Route`
+- `FirewallRule`
+- `ManagementSettings`
+- `UnrecognizedEntry`
+- `NormalizedConfig`
 
-React + Vite
+---
 
-API
+## 5. Deterministic Compliance Engine
 
-FastAPI + Uvicorn
+The compliance layer uses a JSON rule catalog plus a Python evaluator.
 
-Data model
+The current merged MVP contains **20 internal CIS-aligned control themes**. IDs such as `CIS-NET-01` ... `CIS-NET-20` are application identifiers and should not be described as official CIS recommendation numbers unless an explicit benchmark mapping is maintained.
 
-Pydantic
+```mermaid
+flowchart LR
+    E["Normalized Security Evidence"] --> R["Applicable Rule"]
+    R --> Q{"Evidence sufficient?"}
+    Q -->|No| NA["NOT_ASSESSED"]
+    Q -->|Yes| C{"Expected state satisfied?"}
+    C -->|Yes| P["PASS"]
+    C -->|No| F["FAIL"]
+```
 
-Cisco parser
+Every finding can contain:
 
-Regex / CLI parsing
+`rule ID` -> `name` -> `status` -> `severity` -> `expected state` -> `evidence` -> `remediation`
 
-pfSense parser
+---
 
-Python XML parsing
+## 6. AI-Assisted Semantic Learning
 
-Compliance
+The learning system is advisory and human-in-the-loop.
 
-JSON rules + deterministic engine
+```mermaid
+flowchart LR
+    U["Unrecognized Line"] --> E["Embedding<br/>all-MiniLM-L6-v2"]
+    E --> K["Top-k Candidate Mappings"]
+    K --> H{"Human Confirms?"}
+    H -->|No| N["No persistence"]
+    H -->|Yes| DB[("SQLite")]
+    DB --> R["Reusable Learned Mapping"]
+    R --> K
+```
 
-Learning
+| Property | Current behavior |
+|---|---|
+| Model | Sentence Transformers `all-MiniLM-L6-v2` |
+| Candidate output | Ranked top-k mappings |
+| Similarity score | Ranking signal, **not probability** |
+| Persistence | Human confirmation required |
+| Compliance authority | Deterministic engine |
+| Unknown vendor assignment | Not performed by AI |
 
-Sentence Transformers (all-MiniLM-L6-v2)
+This prevents the model from silently turning an uncertain interpretation into a compliance decision.
 
-Persistence
+---
 
-SQLite
+## 7. Shadow Rule Detection
 
-Testing
+The merged implementation includes an ordered firewall / ACL analyzer.
 
-Pytest
+```mermaid
+flowchart LR
+    R1["Earlier Broad Rule"] --> O["Overlap / Subsumption Analysis"]
+    R2["Later Narrow Rule"] --> O
+    O --> S["Potentially Shadowed Rule"]
+```
 
-8. Scope and extension path
+Example:
 
-Current MVP: single-file Cisco IOS/pfSense audit, 20 CIS-aligned themes, evidence-based findings, remediation guidance, end-to-end /api/audit, and semantic learning foundation.
+```text
+Rule 10  ALLOW  0.0.0.0/0  ->  10.0.0.0/24
+Rule 20  DENY   10.0.0.50  ->  10.0.0.0/24
+             ^
+             |
+      later rule may never match
+```
 
-Next differentiator: Shadow Rule Detection for overlapping/ordered ACL and firewall rules.
+The current feature is an MVP relationship analyzer for overlapping and ordered rules. It is not a claim of complete packet-processing equivalence for every vendor and feature.
 
-Deferred: FortiGate, NIST implementation, bulk uploads, live SSH, automatic remediation execution, RBAC, chatbot, change-impact analysis, blockchain/tamper-evident ledger, continuous monitoring, and enterprise inventory management.
+---
 
-The architecture is intentionally modular: new parsers produce the same normalized model, while future frameworks can reuse the compliance pipeline without replacing the ingestion layer.
+## 8. Reporting and Evidence
+
+The merged implementation includes a ReportLab-based PDF report generator.
+
+The reporting layer is designed to consolidate:
+
+| Report area | Contents |
+|---|---|
+| Metadata | Device / audit information |
+| Summary | Pass, fail and not-assessed counts |
+| Findings | Control, severity, status |
+| Evidence | Observed configuration evidence |
+| Remediation | Ready-to-copy guidance |
+| Rule analysis | Shadow / ordering observations where available |
+
+---
+
+## 9. Security and Failure Behavior
+
+| Boundary | Behavior |
+|---|---|
+| Unknown vendor | Never force-classified |
+| Missing evidence | `NOT_ASSESSED` where appropriate |
+| AI | Advisory only |
+| Learning | Human confirmation required |
+| Remediation | Recommendation only; no automatic execution |
+| Similarity | Ranking signal, not probability |
+| Vendor logic | Isolated in parser / normalization layers |
+
+---
+
+## 10. Technology Stack
+
+| Layer | Technology |
+|---|---|
+| UI | React + Vite |
+| API | FastAPI + Uvicorn |
+| Data contracts | Pydantic |
+| Cisco parsing | Python + Regex |
+| pfSense parsing | Python XML parser |
+| Compliance | JSON rule catalog + deterministic Python evaluator |
+| Semantic learning | Sentence Transformers + `all-MiniLM-L6-v2` |
+| Persistence | SQLite |
+| Reporting | ReportLab |
+| Testing | Pytest |
+
+---
+
+## 11. Current Scope and Deferred Work
+
+### Current merged MVP
+
+- Single-file audit
+- Cisco IOS + pfSense
+- Vendor detection
+- Vendor-neutral normalization
+- 20 CIS-aligned control themes
+- `PASS / FAIL / NOT_ASSESSED`
+- Evidence + severity + remediation
+- `/api/audit`
+- Semantic learning foundation
+- Human-confirmed mappings
+- Shadow-rule analysis
+- PDF report generator
+
+### Deferred
+
+| Capability | Status |
+|---|---|
+| FortiGate | Deferred |
+| NIST implementation | Deferred |
+| Bulk inventory / batch uploads | Deferred |
+| Live SSH | Deferred |
+| Automatic remediation execution | Deferred |
+| RBAC / authentication | Deferred |
+| Chatbot | Deferred |
+| Change-impact analysis | Deferred |
+| Blockchain / tamper-evident ledger | Deferred |
+| Continuous monitoring | Deferred |
+
+> **Evaluation principle:** deterministic evidence first; AI assists mapping but does not decide compliance.
