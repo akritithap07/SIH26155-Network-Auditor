@@ -1,11 +1,15 @@
-from typing import Any, Dict
+import xml.etree.ElementTree as ET
+from typing import Any, Dict, List, Set
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
 
+from app.api.training import get_mapper
 from app.compliance.engine import run_compliance
+from app.normalization.schema import UnrecognizedEntry
 from app.parsers.cisco_parser import CiscoIOSParser
 from app.parsers.detector import detect_vendor
 from app.parsers.pfsense_parser import PfSenseParser
+from app.shadow_rules.engine import analyze_shadow_rules
 
 
 router = APIRouter(
@@ -15,6 +19,7 @@ router = APIRouter(
 
 
 MAX_FILE_SIZE = 2 * 1024 * 1024
+AI_TOP_K = 3
 
 
 def _model_to_dict(model: Any) -> Dict[str, Any]:
@@ -72,6 +77,200 @@ def _create_parser(vendor: str):
     return None
 
 
+def _serialize_xml_element(
+    element: ET.Element,
+) -> str:
+    return ET.tostring(
+        element,
+        encoding="unicode",
+    ).strip()
+
+
+def _collect_pfsense_unknown_rule_entries(
+    config_text: str,
+) -> List[UnrecognizedEntry]:
+    """
+    Conservatively expose unsupported direct children of pfSense
+    firewall rules as learning candidates.
+    """
+    try:
+        root = ET.fromstring(config_text)
+    except ET.ParseError:
+        return []
+
+    filter_node = root.find("./filter")
+
+    if filter_node is None:
+        return []
+
+    known_rule_children: Set[str] = {
+        "type",
+        "descr",
+        "interface",
+        "direction",
+        "protocol",
+        "log",
+        "disabled",
+        "source",
+        "destination",
+    }
+
+    entries: List[UnrecognizedEntry] = []
+
+    for rule_index, rule_node in enumerate(
+        filter_node.findall("./rule"),
+        start=1,
+    ):
+        for child in list(rule_node):
+            tag = child.tag
+
+            if not isinstance(tag, str):
+                continue
+
+            if tag in known_rule_children:
+                continue
+
+            serialized = _serialize_xml_element(
+                child
+            )
+
+            if not serialized:
+                continue
+
+            entries.append(
+                UnrecognizedEntry(
+                    line_number=None,
+                    text=serialized,
+                    context=f"filter.rule[{rule_index}]",
+                    evidence=serialized,
+                )
+            )
+
+    return entries
+
+
+def _merge_unknown_entries(
+    vendor: str,
+    normalized: Any,
+    config_text: str,
+) -> List[UnrecognizedEntry]:
+    merged = list(
+        normalized.unrecognized_entries
+    )
+
+    if vendor == "pfsense":
+        merged.extend(
+            _collect_pfsense_unknown_rule_entries(
+                config_text
+            )
+        )
+
+    deduplicated: List[UnrecognizedEntry] = []
+    seen = set()
+
+    for entry in merged:
+        identity = (
+            entry.line_number,
+            entry.text,
+            entry.context,
+        )
+
+        if identity in seen:
+            continue
+
+        seen.add(identity)
+        deduplicated.append(entry)
+
+    return deduplicated
+
+
+def _build_ai_assistance(
+    vendor: str,
+    unknown_entries: List[UnrecognizedEntry],
+) -> Dict[str, Any]:
+    """
+    Generate advisory mappings for unrecognized entries.
+
+    AI never changes the deterministic compliance result.
+    """
+    if not unknown_entries:
+        return {
+            "status": "not_needed",
+            "entry_count": 0,
+            "impact_on_compliance": "none",
+            "entries": [],
+        }
+
+    try:
+        mapper = get_mapper()
+    except Exception:
+        return {
+            "status": "unavailable",
+            "entry_count": len(unknown_entries),
+            "impact_on_compliance": "none",
+            "entries": [
+                {
+                    "line_number": entry.line_number,
+                    "text": entry.text,
+                    "context": entry.context,
+                    "suggestions": [],
+                    "message": (
+                        "AI mapping is temporarily "
+                        "unavailable."
+                    ),
+                }
+                for entry in unknown_entries
+            ],
+        }
+
+    results: List[Dict[str, Any]] = []
+    has_error = False
+
+    for entry in unknown_entries:
+        try:
+            suggestions = mapper.suggest(
+                vendor=vendor,
+                source_text=entry.text,
+                top_k=AI_TOP_K,
+            )
+
+            results.append(
+                {
+                    "line_number": entry.line_number,
+                    "text": entry.text,
+                    "context": entry.context,
+                    "suggestions": suggestions,
+                }
+            )
+
+        except Exception:
+            has_error = True
+
+            results.append(
+                {
+                    "line_number": entry.line_number,
+                    "text": entry.text,
+                    "context": entry.context,
+                    "suggestions": [],
+                    "message": (
+                        "AI mapping could not be "
+                        "completed for this entry."
+                    ),
+                }
+            )
+
+    return {
+        "status": (
+            "degraded"
+            if has_error
+            else "available"
+        ),
+        "entry_count": len(unknown_entries),
+        "impact_on_compliance": "none",
+        "entries": results,
+    }
+
+
 @router.post("/normalize")
 async def normalize_configuration(
     file: UploadFile = File(...),
@@ -80,7 +279,6 @@ async def normalize_configuration(
     Parse a supported configuration and convert it into
     the vendor-neutral normalization schema.
     """
-
     config_text, content = await _read_configuration(file)
 
     detection = detect_vendor(config_text)
@@ -112,8 +310,9 @@ async def normalize_configuration(
         )
 
     try:
-        normalized = parser.parse(config_text)
-
+        normalized = parser.parse(
+            config_text
+        )
     except (TypeError, ValueError) as exc:
         raise HTTPException(
             status_code=422,
@@ -139,18 +338,19 @@ async def audit_configuration(
     file: UploadFile = File(...),
 ):
     """
-    Perform a complete configuration audit.
+    Complete audit pipeline:
 
-    Pipeline:
-        upload
-        -> vendor detection
-        -> vendor-specific parsing
-        -> normalization
-        -> deterministic compliance evaluation
+    upload
+    -> vendor detection
+    -> vendor-specific parsing
+    -> normalization
+    -> deterministic compliance evaluation
+    -> shadow rule detection
+    -> AI suggestions for unrecognized entries
 
-    Unknown vendors are never guessed.
+    Shadow Rule Detection and AI assistance are advisory
+    analyses and do not modify PASS, FAIL, or NOT_ASSESSED.
     """
-
     config_text, content = await _read_configuration(file)
 
     detection = detect_vendor(config_text)
@@ -168,6 +368,22 @@ async def audit_configuration(
             "detection": detection,
             "normalized": None,
             "compliance": None,
+            "shadow_rules": {
+                "status": "not_available",
+                "rule_count": 0,
+                "issues": [],
+                "summary": {
+                    "critical": 0,
+                    "medium": 0,
+                    "total": 0,
+                },
+            },
+            "ai_assistance": {
+                "status": "not_available",
+                "entry_count": 0,
+                "impact_on_compliance": "none",
+                "entries": [],
+            },
             "message": (
                 "The vendor could not be identified. "
                 "No vendor-specific compliance assessment "
@@ -195,11 +411,26 @@ async def audit_configuration(
             normalized
         )
 
+        shadow_rules = analyze_shadow_rules(
+            normalized.firewall_rules
+        )
+
     except (TypeError, ValueError) as exc:
         raise HTTPException(
             status_code=422,
             detail=str(exc),
         ) from exc
+
+    unknown_entries = _merge_unknown_entries(
+        vendor=vendor,
+        normalized=normalized,
+        config_text=config_text,
+    )
+
+    ai_assistance = _build_ai_assistance(
+        vendor=vendor,
+        unknown_entries=unknown_entries,
+    )
 
     return {
         "filename": file.filename,
@@ -213,4 +444,6 @@ async def audit_configuration(
             normalized
         ),
         "compliance": compliance,
+        "shadow_rules": shadow_rules,
+        "ai_assistance": ai_assistance,
     }
